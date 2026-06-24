@@ -8,8 +8,8 @@ See [PLAN.md](./PLAN.md) for the architecture and triage logic.
 ## Components
 
 - `planner-mcp` — the unofficial Planner MCP server (third-party, run via Docker, not vendored here)
-- `backend/` — Python (uv) FastAPI service: MCP client + OpenRouter orchestration for triage and chat
-- `web/` — Next.js (TypeScript) frontend: Triage button and ad-hoc chat UI
+- `backend/` — Python (uv) FastAPI service: MCP client + OpenRouter orchestration for triage, delete, and chat
+- `web/` — Next.js (TypeScript) frontend: Triage, delete, and ad-hoc chat UI
 
 ## One-time setup
 
@@ -41,21 +41,26 @@ cp web/.env.example web/.env         # backend URL for the browser
 
 Fill in `.env` (root) with the Azure values from step 1, and `backend/.env` with your OpenRouter
 key. Defaults assume your plan is called "Message Center Posts" with a "To Do" bucket and a
-"To Be Deleted" fallback bucket — adjust `backend/.env` if your bucket names differ.
+"To Be Deleted" fallback bucket — adjust `backend/.env` if your bucket names differ (bucket-name
+matching is case-insensitive, so small casing differences don't need an env change).
 
 ## Running it
 
 ```bash
-# 1. Planner MCP server
-docker compose up -d
+scripts/start.sh   # starts planner-mcp (Docker), backend (:8001), frontend (:3000)
+scripts/stop.sh    # stops all three
+```
 
-# 2. Backend (separate terminal)
-cd backend
-uv run uvicorn src.main:app --reload --port 8001
+Logs land in `.run/backend.log` and `.run/web.log` (gitignored); PIDs are tracked there too so
+`stop.sh` knows what to kill. For `planner-mcp`'s own logs, use `docker compose logs -f
+planner-mcp`.
 
-# 3. Frontend (separate terminal)
-cd web
-npm run dev
+If you'd rather run each piece by hand (e.g. to watch a log directly in its own terminal):
+
+```bash
+docker compose up -d                                          # planner-mcp
+(cd backend && uv run uvicorn src.main:app --reload --port 8001)  # backend
+(cd web && npm run dev)                                       # frontend
 ```
 
 Open http://localhost:3000.
@@ -68,8 +73,11 @@ run somewhere with access to a browser on your machine (this is why it's not con
 
 ## Status
 
-Verified end-to-end against a real tenant on 2026-06-24: `/triage/preview` and `/chat` both work
-against live Planner data. `/triage/apply` (which actually moves tasks) hasn't been triggered
-outside the UI yet — try it via the Triage page once you're happy with a preview. See PLAN.md's
-"Verified against the live tenant" section for the bugs found and fixed along the way (tool
-argument casing, JSON reliability, OAuth token reuse, classification prompt quality).
+Verified end-to-end against a real tenant: triage preview/apply, the delete flow, and ad-hoc chat
+have all been run against live Planner data, including a full apply (moved real tasks between
+buckets) and a partial delete (removed a subset of tasks from "To Be Deleted"). Classification
+runs at `temperature=0` for consistent results across repeated runs. See PLAN.md's "Verified
+against the live tenant" section for the bugs found and fixed along the way, and its "Open items"
+section for what's still rough (mainly: OAuth token doesn't persist across backend restarts, and
+the classification prompt's bucket-specific rules are expected to keep evolving as more
+misclassifications turn up).
