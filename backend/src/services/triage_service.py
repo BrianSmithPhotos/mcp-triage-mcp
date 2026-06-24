@@ -28,12 +28,28 @@ You are given the exact list of other available buckets (columns) in the plan, n
 - If a post plausibly fits more than one available bucket, prefer a bucket named "Planner" over
   any other candidate. Planner gets first claim on ambiguous posts.
 
+Bucket-specific guidance below adds extra constraints or extra scope for a few named buckets
+ONLY. It does not change how you judge any other bucket — every bucket not named below (e.g.
+"Planner", "SharePoint") is still decided purely on whether the post's substance matches that
+bucket's own plain subject matter, same as the general rule above. Do not apply the "must relate
+to project/task management" language below to buckets other than the ones it names.
+
 Bucket-specific guidance (apply these when the matching bucket is present in "available_buckets"):
 
+- "Copilot": for any post substantively about Microsoft Copilot products themselves — Microsoft
+  365 Copilot, Copilot Chat, Copilot agents, the Copilot app experience, Copilot-branded features
+  in other apps, etc. A long post describing several aspects of the Copilot app/experience (UI,
+  navigation, chat, agents) still belongs here even if, along the way, it mentions an unrelated
+  named feature or toggle (e.g. a "Work IQ" toggle inside the Copilot app) — that passing mention
+  does not redirect the post elsewhere. Judge the post's main subject, not every term it contains.
 - "ProjOps": only for posts about Dynamics 365 Project Operations and project management
   capabilities specifically (resourcing, scheduling, project execution). A post that happens to
   mention "Project Operations" but is really about invoicing, billing, or customer/contact
-  management does NOT belong here — send it to the fallback bucket instead.
+  management does NOT belong here — send it to the fallback bucket instead. Do NOT confuse this
+  with classic Microsoft Project, "Project Online", "Project for the web", or "Project Web App" —
+  those are a different, older product line and despite the similar name are NOT Dynamics 365
+  Project Operations. Posts about that classic Project product line belong in a bucket named
+  "Project" instead (if present), not "ProjOps".
 - "Special Projects": catch posts about work or task management more broadly, even when they
   don't mention "Project" or "Planner" by name — e.g. Work IQ, CoWork, Microsoft To Do, or other
   task/work-tracking tools and features.
