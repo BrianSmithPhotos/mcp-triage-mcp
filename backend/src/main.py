@@ -1,9 +1,19 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from . import mcp_client
 from .routes import chat, triage
 
-app = FastAPI(title="Planner Triage Backend")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+    await mcp_client.disconnect()
+
+
+app = FastAPI(title="Planner Triage Backend", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

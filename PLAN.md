@@ -56,23 +56,56 @@ web/ (Next.js, TypeScript)        backend/ (Python, uv, FastAPI)        planner-
 
 No `delete_task` calls anywhere in this flow.
 
-## Open items / assumptions to verify once Azure credentials exist
+## Verified against the live tenant (2026-06-24)
 
-- **Field names from Graph**: assumed `list_buckets` returns `{id, name}` and `list_tasks`
-  returns `{id, title, "@odata.etag", bucketId, ...}` per standard Planner/Graph shapes. Not yet
-  confirmed against a live response — likely the first thing to fix once auth is wired up.
-- **OAuth flow on the backend**: `fastmcp.Client(auth="oauth")` opens a local browser and a
-  callback listener. This needs the backend process to run on a machine with a browser available
-  to you — confirmed this is fine since it's a single-user local app, but worth knowing if you
-  ever want to deploy the backend somewhere headless.
-- **Bucket/plan name matching**: triage matches by *exact* plan/bucket title strings from
-  `backend/.env`. If "Message Center Posts" or any bucket gets renamed, update the env vars.
+Ran `/triage/preview` and `/chat` end-to-end against the real "Message Center Posts" plan.
+Two real bugs surfaced and were fixed:
+
+- **Tool argument casing**: the README documents snake_case args (`plan_id`, `bucket_id`,
+  `task_id`), but this server version's actual tool schemas use camelCase (`planId`, `bucketId`,
+  `taskId`, `checklistItems`, `etagDetails`, etc.) — confirmed via `client.list_tools()`. All
+  `call_tool(...)` calls in `triage_service.py`/`chat_service.py` now use the live schema's names.
+- **Classification JSON reliability**: the model sometimes wrapped its answer in markdown fences
+  or hallucinated a bucket name not in the real list (e.g. invented "Teams" when no such bucket
+  exists). Fixed by switching to OpenRouter's structured-output mode
+  (`response_format: json_schema`, `strict: true`) with `bucket_name` constrained to an enum of
+  the plan's actual bucket names — this also fixed an `Expecting value: line 1 column 1` 500 that
+  was really a `json.JSONDecodeError` being mis-caught as "plan/bucket not found".
+- **OAuth token reuse**: originally opened a fresh `fastmcp.Client` (and thus a fresh browser
+  OAuth handshake) on every backend request. Replaced with a single long-lived `Client`, connected
+  lazily on first use and reused for the rest of the process's life — confirmed by log: one
+  "OAuth authorization URL" entry per process start, not per request.
+- **Confirmed live shapes**: `list_buckets` → `{id, "@odata.etag", name, orderHint, planId}`;
+  `list_tasks` → includes `title`, `bucketId`, `"@odata.etag"`, `percentComplete`, etc.;
+  `get_task_details` → `{id, description, checklist, references, ...}`. These matched the
+  original assumptions exactly.
+- **Real bucket name**: this tenant's source bucket is actually named **"To do"** (lowercase
+  "do"), not "To Do" as initially assumed. Bucket-name matching in `triage_service.py` is now
+  case-insensitive so small naming variations like this don't require an env var change.
+- **Classification quality**: first run with a loose prompt mis-routed 2 posts to "Copilot" based
+  on their title's bracketed product tag (e.g. "[Microsoft Teams] ...") rather than their actual
+  content. Per user feedback, the prompt now explicitly tells the model the title's product tag is
+  not the basis for the decision — only the description's substance is. Re-run: all 27 posts
+  correctly fell back to "To Be Deleted" with zero unmatched buckets. User has more bucket-specific
+  rules to add later (e.g. for "ProjOps") once this baseline is settled.
+
+## Open items
+
+- **OAuth token persistence across restarts**: token is still in-memory only, so a backend
+  restart (including `--reload` during dev) forces a fresh browser sign-in. Could wire up a
+  file-based `AsyncKeyValue` token store (fastmcp supports this) if recurring restarts become
+  annoying.
+- **Apply not yet exercised live**: `/triage/preview` and `/chat` were tested against the real
+  tenant; `/triage/apply` (which actually calls `update_task` to move tasks) was deliberately not
+  triggered outside the UI, since it mutates the real Planner board — first real run should happen
+  via the Triage page's "Apply moves" button after reviewing a preview.
 - **Model choice**: `OPENROUTER_TRIAGE_MODEL=openai/gpt-4o-mini` (cheap, high-volume
   classification) and `OPENROUTER_CHAT_MODEL=anthropic/claude-sonnet-4.6` (chat) are defaults,
   easily changed via env var.
+- **Pagination**: not yet handling more than one MCP "page" if a plan has very large numbers of
+  buckets/tasks (this tenant's 27-28 tasks all came back in one `list_tasks` call).
 
 ## What's NOT built yet
 
-- Real end-to-end test against your tenant (needs your Azure app registration + OpenRouter key).
-- Any UI polish beyond a functional preview table and chat thread.
-- Handling more than one MCP "round" of pagination if a plan has very large numbers of buckets/tasks.
+- UI polish beyond a functional preview table and chat thread.
+- Bucket-specific classification rules (e.g. for "ProjOps") — pending more detailed guidance.

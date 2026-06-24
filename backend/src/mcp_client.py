@@ -1,25 +1,31 @@
-from contextlib import asynccontextmanager
+import asyncio
 
 from fastmcp import Client
 
 from .config import settings
 
-
-@asynccontextmanager
-async def planner_client():
-    """Open a session against the Planner MCP server.
-
-    Uses fastmcp's built-in OAuth flow ("auth='oauth'"): the first call opens
-    a browser for Microsoft sign-in, then caches the token locally so later
-    calls reuse it silently. Only works for a server process running on a
-    machine with a browser available to the signed-in user (fine for this
-    single-user, local-only app).
-    """
-    async with Client(settings.planner_mcp_url, auth="oauth") as client:
-        yield client
+# A single long-lived connection, reused for the life of the backend process.
+# Authenticates once via fastmcp's built-in OAuth flow ("auth='oauth'"): the first
+# call opens a browser for Microsoft sign-in, then the resulting token is reused
+# for every subsequent tool call until the backend restarts. Opening a fresh
+# Client per request would mean a fresh OAuth handshake per request, since
+# fastmcp's default token storage is in-memory and scoped to the Client instance.
+_client = Client(settings.planner_mcp_url, auth="oauth")
+_connect_lock = asyncio.Lock()
+_connected = False
 
 
-async def call_tool(name: str, arguments: dict | None = None):
-    async with planner_client() as client:
-        result = await client.call_tool(name, arguments or {})
-        return result.data
+async def get_client() -> Client:
+    global _connected
+    async with _connect_lock:
+        if not _connected:
+            await _client.__aenter__()
+            _connected = True
+    return _client
+
+
+async def disconnect() -> None:
+    global _connected
+    if _connected:
+        await _client.__aexit__(None, None, None)
+        _connected = False

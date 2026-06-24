@@ -61,13 +61,15 @@ npm run dev
 Open http://localhost:3000.
 
 The first time the backend calls a Planner tool, it opens a browser window for you to sign in to
-Microsoft and consent; the token is then cached locally so you won't see that again until it
-expires. Because of this, the backend must run somewhere with access to a browser on your machine
-(this is why it's not containerized, unlike `planner-mcp`).
+Microsoft and consent; the token is then reused for the rest of that backend process's life (it's
+in-memory only, so a backend restart means signing in again). Because of this, the backend must
+run somewhere with access to a browser on your machine (this is why it's not containerized, unlike
+`planner-mcp`).
 
 ## Status
 
-Scaffolding only — not yet run end-to-end against a real Planner tenant. Once Azure credentials
-are in place, expect to debug exact field names/shapes coming back from the MCP tools (e.g.
-whether `list_buckets`/`list_tasks` results key fields as `name`/`title` and where the etag lives)
-against this code.
+Verified end-to-end against a real tenant on 2026-06-24: `/triage/preview` and `/chat` both work
+against live Planner data. `/triage/apply` (which actually moves tasks) hasn't been triggered
+outside the UI yet — try it via the Triage page once you're happy with a preview. See PLAN.md's
+"Verified against the live tenant" section for the bugs found and fixed along the way (tool
+argument casing, JSON reliability, OAuth token reuse, classification prompt quality).

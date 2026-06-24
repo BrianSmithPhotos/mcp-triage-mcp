@@ -1,7 +1,7 @@
 import json
 
 from ..config import settings
-from ..mcp_client import planner_client
+from ..mcp_client import get_client
 from ..openrouter_client import chat_completion
 
 SYSTEM_PROMPT = """You are an assistant that helps the user manage Microsoft Planner via tool
@@ -27,36 +27,36 @@ def _mcp_tool_to_openai_schema(tool) -> dict:
 async def run_chat(history: list[dict]) -> list[dict]:
     """Run one assistant turn, including any tool-call round trips. Returns the
     new messages to append to the conversation (one or more assistant/tool messages)."""
-    async with planner_client() as client:
-        mcp_tools = await client.list_tools()
-        tools = [_mcp_tool_to_openai_schema(t) for t in mcp_tools]
+    client = await get_client()
+    mcp_tools = await client.list_tools()
+    tools = [_mcp_tool_to_openai_schema(t) for t in mcp_tools]
 
-        messages = [{"role": "system", "content": SYSTEM_PROMPT}, *history]
-        new_messages: list[dict] = []
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}, *history]
+    new_messages: list[dict] = []
 
-        for _ in range(MAX_TOOL_ROUNDS):
-            response = await chat_completion(
-                model=settings.openrouter_chat_model,
-                messages=messages,
-                tools=tools,
-            )
-            message = response["choices"][0]["message"]
-            messages.append(message)
-            new_messages.append(message)
+    for _ in range(MAX_TOOL_ROUNDS):
+        response = await chat_completion(
+            model=settings.openrouter_chat_model,
+            messages=messages,
+            tools=tools,
+        )
+        message = response["choices"][0]["message"]
+        messages.append(message)
+        new_messages.append(message)
 
-            tool_calls = message.get("tool_calls")
-            if not tool_calls:
-                break
+        tool_calls = message.get("tool_calls")
+        if not tool_calls:
+            break
 
-            for call in tool_calls:
-                args = json.loads(call["function"]["arguments"] or "{}")
-                result = await client.call_tool(call["function"]["name"], args)
-                tool_message = {
-                    "role": "tool",
-                    "tool_call_id": call["id"],
-                    "content": json.dumps(result.data),
-                }
-                messages.append(tool_message)
-                new_messages.append(tool_message)
+        for call in tool_calls:
+            args = json.loads(call["function"]["arguments"] or "{}")
+            result = await client.call_tool(call["function"]["name"], args)
+            tool_message = {
+                "role": "tool",
+                "tool_call_id": call["id"],
+                "content": json.dumps(result.data),
+            }
+            messages.append(tool_message)
+            new_messages.append(tool_message)
 
-        return new_messages
+    return new_messages

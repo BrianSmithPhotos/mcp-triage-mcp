@@ -8,14 +8,20 @@ async def chat_completion(
     messages: list[dict],
     tools: list[dict] | None = None,
     tool_choice: str | dict | None = None,
+    response_format: dict | None = None,
+    max_tokens: int | None = None,
 ) -> dict:
     payload: dict = {"model": model, "messages": messages}
     if tools:
         payload["tools"] = tools
     if tool_choice:
         payload["tool_choice"] = tool_choice
+    if response_format:
+        payload["response_format"] = response_format
+    if max_tokens:
+        payload["max_tokens"] = max_tokens
 
-    async with httpx.AsyncClient(timeout=60) as client:
+    async with httpx.AsyncClient(timeout=120) as client:
         response = await client.post(
             f"{settings.openrouter_base_url}/chat/completions",
             headers={"Authorization": f"Bearer {settings.openrouter_api_key}"},
