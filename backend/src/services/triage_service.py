@@ -25,6 +25,18 @@ You are given the exact list of other available buckets (columns) in the plan, n
   match on the title's product tag alone.
 - "bucket_name" in your response must be copied verbatim from "available_buckets" — never a bucket
   name that isn't in that list, even if it would be a better fit.
+- If a post plausibly fits more than one available bucket, prefer a bucket named "Planner" over
+  any other candidate. Planner gets first claim on ambiguous posts.
+
+Bucket-specific guidance (apply these when the matching bucket is present in "available_buckets"):
+
+- "ProjOps": only for posts about Dynamics 365 Project Operations and project management
+  capabilities specifically (resourcing, scheduling, project execution). A post that happens to
+  mention "Project Operations" but is really about invoicing, billing, or customer/contact
+  management does NOT belong here — send it to the fallback bucket instead.
+- "Special Projects": catch posts about work or task management more broadly, even when they
+  don't mention "Project" or "Planner" by name — e.g. Work IQ, CoWork, Microsoft To Do, or other
+  task/work-tracking tools and features.
 
 Every task_id from the input must appear exactly once in your response.
 """
