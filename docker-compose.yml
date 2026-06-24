@@ -1,0 +1,12 @@
+services:
+  planner-mcp:
+    image: ghcr.io/aixolotl/microsoft-planner-mcp:latest
+    ports:
+      - "8000:8000"
+    environment:
+      CLIENT_ID: ${PLANNER_CLIENT_ID}
+      CLIENT_SECRET: ${PLANNER_CLIENT_SECRET}
+      TENANT_ID: ${PLANNER_TENANT_ID}
+      BASE_URL: ${PLANNER_BASE_URL:-http://localhost:8000}
+      ALLOWED_ORIGINS: ${PLANNER_ALLOWED_ORIGINS:-["http://localhost:8000","http://localhost:6274"]}
+      REQUIRE_AUTHORIZATION_CONSENT: ${PLANNER_REQUIRE_AUTHORIZATION_CONSENT:-true}
