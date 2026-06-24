@@ -10,6 +10,7 @@ async def chat_completion(
     tool_choice: str | dict | None = None,
     response_format: dict | None = None,
     max_tokens: int | None = None,
+    temperature: float | None = None,
 ) -> dict:
     payload: dict = {"model": model, "messages": messages}
     if tools:
@@ -20,6 +21,8 @@ async def chat_completion(
         payload["response_format"] = response_format
     if max_tokens:
         payload["max_tokens"] = max_tokens
+    if temperature is not None:
+        payload["temperature"] = temperature
 
     async with httpx.AsyncClient(timeout=120) as client:
         response = await client.post(

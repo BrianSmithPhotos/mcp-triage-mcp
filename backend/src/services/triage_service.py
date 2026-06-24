@@ -155,6 +155,7 @@ async def get_triage_preview() -> dict:
         ],
         response_format=response_format,
         max_tokens=8000,
+        temperature=0,
     )
 
     content = response["choices"][0]["message"]["content"]
