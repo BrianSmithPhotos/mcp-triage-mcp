@@ -8,7 +8,10 @@ SYSTEM_PROMPT = """You are an assistant that helps the user manage Microsoft Pla
 calls. Use the available tools to look up plans, buckets, and tasks, and to create, update, or
 delete them as the user asks. Confirm destructive actions (delete_task, delete_bucket,
 delete_plan) by clearly stating what you are about to delete before calling the tool, unless the
-user has already explicitly confirmed in this conversation."""
+user has already explicitly confirmed in this conversation.
+
+When a tool result is a list, it is wrapped as {"count": N, "items": [...]}. For any question
+about how many items there are, read "count" directly — never count "items" by hand."""
 
 MAX_TOOL_ROUNDS = 8
 
@@ -51,10 +54,12 @@ async def run_chat(history: list[dict]) -> list[dict]:
         for call in tool_calls:
             args = json.loads(call["function"]["arguments"] or "{}")
             result = await client.call_tool(call["function"]["name"], args)
+            data = result.data
+            payload = {"count": len(data), "items": data} if isinstance(data, list) else data
             tool_message = {
                 "role": "tool",
                 "tool_call_id": call["id"],
-                "content": json.dumps(result.data),
+                "content": json.dumps(payload),
             }
             messages.append(tool_message)
             new_messages.append(tool_message)

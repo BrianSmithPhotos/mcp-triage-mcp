@@ -129,6 +129,15 @@ bugs along the way (not hypothetical — each one reproduced against live data b
   (a misclassified task appeared fixed, then wasn't, then was again) until traced to
   non-determinism rather than the prompt itself. Pinned to `temperature=0`; verified 3 repeated
   runs against the same live task agree every time.
+- **Chat counting reliability**: chat models (tried Sonnet, Haiku 4.5, gpt-4o-mini) cannot reliably
+  count items in a JSON array they receive as a raw tool result — confirmed reproducibly: 3 runs
+  against a stable, known-28-item bucket returned wrong, non-deterministic counts (32/31/30, then
+  44/51/40 on a cheaper model) even with an explicit "count precisely" system-prompt instruction.
+  This isn't fixable by prompting or by picking a smarter (more expensive) model. Fixed
+  architecturally instead, in `chat_service.py`: any list-shaped tool result is wrapped as
+  `{"count": N, "items": [...]}` before being sent to the model, with an instruction to read
+  `count` directly rather than counting `items` by hand. Verified 3/3 correct after the fix, with
+  the cheapest model (`gpt-4o-mini`).
 - **Classification prompt iteration** (see rules above): caught and fixed three real
   misclassifications during live retesting — title-tag bias (Teams-tagged posts auto-assigned to
   a nonexistent "Teams" bucket), ProjOps/Project confusion (Project Online vs. Dynamics 365
@@ -141,9 +150,10 @@ bugs along the way (not hypothetical — each one reproduced against live data b
   restart (including `--reload` during dev) forces a fresh browser sign-in. Could wire up a
   file-based `AsyncKeyValue` token store (fastmcp supports this) if recurring restarts become
   annoying.
-- **Model choice**: `OPENROUTER_TRIAGE_MODEL=openai/gpt-4o-mini` (cheap, high-volume
-  classification, `temperature=0`) and `OPENROUTER_CHAT_MODEL=anthropic/claude-sonnet-4.6`
-  (chat) are defaults, easily changed via env var.
+- **Model choice**: both `OPENROUTER_TRIAGE_MODEL` and `OPENROUTER_CHAT_MODEL` default to
+  `openai/gpt-4o-mini` — cheap, and reliable for chat now that counting no longer depends on the
+  model itself (see "Chat counting reliability" above). Easily changed via env var if chat quality
+  needs to go up for more complex ad-hoc requests beyond simple counts/lookups.
 - **Pagination**: not yet handling more than one MCP "page" if a plan has very large numbers of
   buckets/tasks (this tenant's data, ~100-130 tasks across 8 buckets, has always come back in one
   `list_tasks` call so far).

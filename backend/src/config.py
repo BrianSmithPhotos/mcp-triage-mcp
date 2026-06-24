@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     openrouter_api_key: str
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     openrouter_triage_model: str = "openai/gpt-4o-mini"
-    openrouter_chat_model: str = "anthropic/claude-sonnet-4.6"
+    openrouter_chat_model: str = "openai/gpt-4o-mini"
 
     # Triage target
     message_center_plan_name: str = "Message Center Posts"
