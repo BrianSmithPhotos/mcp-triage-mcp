@@ -54,14 +54,15 @@ async def _get_plan_and_buckets(client):
     return plan, buckets
 
 
+def _find_bucket(buckets: list[dict], name: str) -> dict | None:
+    return next((b for b in buckets if b.get("name", "").strip().lower() == name.strip().lower()), None)
+
+
 async def get_triage_preview() -> dict:
     client = await get_client()
     plan, buckets = await _get_plan_and_buckets(client)
 
-    todo_bucket = next(
-        (b for b in buckets if b.get("name", "").strip().lower() == settings.todo_bucket_name.strip().lower()),
-        None,
-    )
+    todo_bucket = _find_bucket(buckets, settings.todo_bucket_name)
     if todo_bucket is None:
         raise ValueError(f"Bucket '{settings.todo_bucket_name}' not found in plan '{plan['title']}'")
 
@@ -197,3 +198,47 @@ async def apply_triage_decisions(decisions: list[dict]) -> dict:
             errors.append({"task_id": task_id, "error": str(exc)})
 
     return {"applied": applied, "errors": errors}
+
+
+async def get_deleted_bucket_preview() -> dict:
+    """List every task currently in the fallback bucket, for the user to review before
+    permanently deleting them. Deleting a Planner bucket does not delete its tasks (they'd
+    just be orphaned, pointing at a bucket that no longer exists), so clearing this bucket
+    means deleting each task individually and leaving the bucket itself in place."""
+    client = await get_client()
+    plan, buckets = await _get_plan_and_buckets(client)
+
+    bucket = _find_bucket(buckets, settings.fallback_bucket_name)
+    if bucket is None:
+        raise ValueError(f"Bucket '{settings.fallback_bucket_name}' not found in plan '{plan['title']}'")
+
+    tasks_result = await client.call_tool(
+        "list_tasks",
+        {"planId": plan["id"], "filter": f"bucketId eq '{bucket['id']}'"},
+    )
+    tasks = tasks_result.data or []
+
+    return {
+        "plan": plan["title"],
+        "bucket": bucket["name"],
+        "tasks": [
+            {"task_id": t["id"], "title": t.get("title", ""), "etag": t.get("@odata.etag", "")} for t in tasks
+        ],
+    }
+
+
+async def delete_bucket_tasks(tasks: list[dict]) -> dict:
+    """Permanently delete each given task. `tasks` come straight from the preview response
+    the frontend rendered, so the user has already seen what's about to be deleted."""
+    deleted = []
+    errors = []
+    client = await get_client()
+    for task in tasks:
+        task_id = task["task_id"]
+        try:
+            await client.call_tool("delete_task", {"taskId": task_id, "etag": task["etag"]})
+            deleted.append(task_id)
+        except Exception as exc:  # noqa: BLE001 - report per-task failure, keep going
+            errors.append({"task_id": task_id, "error": str(exc)})
+
+    return {"deleted": deleted, "errors": errors}

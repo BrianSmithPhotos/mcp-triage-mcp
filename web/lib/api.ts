@@ -31,6 +31,34 @@ export async function applyTriageDecisions(decisions: TriageDecision[]) {
   return res.json();
 }
 
+export type DeletableTask = {
+  task_id: string;
+  title: string;
+  etag: string;
+};
+
+export type DeletedBucketPreview = {
+  plan: string;
+  bucket: string;
+  tasks: DeletableTask[];
+};
+
+export async function fetchDeletedBucketPreview(): Promise<DeletedBucketPreview> {
+  const res = await fetch(`${BACKEND_URL}/triage/deleted-preview`);
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function deleteBucketTasks(tasks: DeletableTask[]) {
+  const res = await fetch(`${BACKEND_URL}/triage/delete`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tasks }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
 export type ChatMessage = {
   role: "system" | "user" | "assistant" | "tool";
   content?: string | null;

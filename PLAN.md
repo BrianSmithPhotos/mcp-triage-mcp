@@ -6,9 +6,10 @@ Two features against Microsoft Planner, via [aixolotl/microsoft-planner-mcp](htt
 
 1. **Triage button** — for the plan "Message Center Posts", look at every task in the "To Do"
    bucket and decide which bucket it actually belongs in. Most go to "To Be Deleted"; any that
-   clearly match another bucket's name/topic go there instead. No deletions at this stage —
-   triage only moves tasks between buckets.
-2. **Ad-hoc chat** — a general chat interface that can call any Planner MCP tool on request
+   clearly match another bucket's name/topic go there instead. Triage itself only moves tasks
+   between buckets, never deletes.
+2. **Delete button** — permanently delete every task currently sitting in "To Be Deleted".
+3. **Ad-hoc chat** — a general chat interface that can call any Planner MCP tool on request
    (create/read/update/delete tasks, buckets, plans) for one-off work.
 
 ## Architecture
@@ -55,6 +56,20 @@ web/ (Next.js, TypeScript)        backend/ (Python, uv, FastAPI)        planner-
    ("bucket not found") instead of silently applied.
 
 No `delete_task` calls anywhere in this flow.
+
+## Delete logic
+
+`GET /triage/deleted-preview` lists every task currently in the fallback bucket (just title +
+etag, for the user to review). `POST /triage/delete` calls `delete_task` on each one individually
+and leaves the bucket itself in place.
+
+This is individual deletes rather than delete-and-recreate-the-bucket because **deleting a
+Planner bucket via the Graph API does not cascade-delete its tasks** — confirmed by creating a
+throwaway bucket + task and deleting the bucket: the task survived, still pointing at the
+now-nonexistent `bucketId` (orphaned). The Planner web UI likely deletes tasks individually before
+removing a bucket, which is why deleting a bucket from the UI "just works" while doing so through
+this raw Graph endpoint would not. The frontend requires an explicit checkbox confirmation before
+the delete button is enabled, since this action is irreversible.
 
 ## Verified against the live tenant (2026-06-24)
 
