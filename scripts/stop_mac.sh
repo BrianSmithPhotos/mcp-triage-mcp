@@ -12,8 +12,11 @@ stop_pid_file() {
     local pid
     pid="$(cat "$pid_file")"
     if kill -0 "$pid" 2>/dev/null; then
-      echo "Stopping $name (pid $pid)..."
-      kill "$pid" 2>/dev/null
+      echo "Stopping $name (pid $pid and its children)..."
+      # Kill the entire process group so child processes (e.g. uvicorn spawned by
+      # uv run, next-server spawned by next dev) don't linger after the parent dies.
+      pkill -TERM -P "$pid" 2>/dev/null || true
+      kill "$pid" 2>/dev/null || true
     else
       echo "$name not running (stale pid file)"
     fi
