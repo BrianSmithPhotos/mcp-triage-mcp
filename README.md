@@ -47,8 +47,8 @@ matching is case-insensitive, so small casing differences don't need an env chan
 ## Running it
 
 ```bash
-scripts/start.sh   # starts planner-mcp (Docker), backend (:8001), frontend (:3000)
-scripts/stop.sh    # stops all three
+scripts/start_mac.sh   # starts planner-mcp (Docker), backend (:8001), frontend (:3000)
+scripts/stop_mac.sh    # stops all three
 ```
 
 Logs land in `.run/backend.log` and `.run/web.log` (gitignored); PIDs are tracked there too so
