@@ -71,6 +71,23 @@ in-memory only, so a backend restart means signing in again). Because of this, t
 run somewhere with access to a browser on your machine (this is why it's not containerized, unlike
 `planner-mcp`).
 
+## Troubleshooting
+
+### Frontend won't start / `localhost:3000` connection refused
+
+**Symptom:** macOS shows a notification that `next-swc.darwin-arm64.node` has been moved to Trash, and `npm run dev` fails immediately or the port never opens.
+
+**Cause:** macOS (Gatekeeper or a security scanner) quarantined the native SWC compiler binary that Next.js uses. Because the directory still exists, `npm install` reports "up to date" and doesn't re-download it.
+
+**Fix:**
+```bash
+cd web
+rm -rf node_modules/@next/swc-darwin-arm64
+npm install
+```
+
+On the first run after reinstall, macOS may show a security dialog — click **Allow**, or approve it in System Settings → Privacy & Security.
+
 ## Status
 
 Verified end-to-end against a real tenant: triage preview/apply, the delete flow, and ad-hoc chat
